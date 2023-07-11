@@ -1,0 +1,10 @@
+**/**/__pycache__
+**/**/secrets.yaml
+**/**/hosts.ini
+**/**/dist
+**/**/.env
+**/**/*.secret
+**/**/*.secret.sql
+**/**/*.pdf
+**/**/*.fodg
+!**/**/*.template.fodg

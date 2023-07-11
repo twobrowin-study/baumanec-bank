@@ -1,0 +1,51 @@
+- hosts: all
+  tags:
+    - deploy
+  vars_files:
+    - secrets.yaml
+  tasks:
+    - name: Init a new swarm with default parameters
+      community.docker.docker_swarm:
+        state: present
+    
+    - name: Create work directory
+      file:
+        path: ~/baumanec-bank
+        state: directory
+  
+    - name: Copy work files
+      copy:
+        src:  "{{ item }}"
+        dest: ~/baumanec-bank
+      with_fileglob:
+        - docker-compose.yaml
+        - database/*
+      register:
+        copy_register
+    
+    - name: Populate checksums
+      vars:
+        filenames: "{{ copy_register.results | map(attribute='dest') | map('split', '/') | map('last') | list }}"
+        checksums: "{{ copy_register.results | map(attribute='checksum') | list }}"
+        file_checksums: "{{ filenames | zip(checksums) }}"
+      set_fact:
+        checksums_populated: "{{ checksums_populated|default({}) | combine( {item[0]: item[1]} ) }}"
+      with_items:
+        - "{{ file_checksums }}"
+    
+    - name: Deploy the stack
+      docker_stack:
+        state: present
+        name: baumanec-bank
+        prune: yes
+        resolve_image: always
+        compose:
+          - ~/baumanec-bank/docker-compose.yaml
+      environment:
+        PG_SCH_CHECKSUM:  "{{ checksums_populated['postgres-scheme.sql'] }}"
+        PG_PSWD_CHECKSUM: "{{ checksums_populated['postgres-passwd.secret'] }}"
+        CLIENT_PSWD:      "{{ client_pswd }}"
+        BANK_PSWD:        "{{ bank_pswd }}"
+        MARKET_PSWD:      "{{ market_pswd }}"
+        ACCOUNT_PSWD:     "{{ account_pswd }}"
+        GOVERNMENT_PSWD:  "{{ government_pswd }}"

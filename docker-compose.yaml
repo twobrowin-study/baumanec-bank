@@ -1,0 +1,101 @@
+version: '3.8'
+
+x-logging:
+  &default-logging
+  driver: "json-file"
+  options:
+    max-size: "500m"
+    max-file: "2"
+
+services:
+  database:
+    image: postgres:15.3-alpine3.18
+    ports:
+      - "0.0.0.0:5432:5432"
+    logging: *default-logging
+    networks:
+      - baumanec-bank
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-passwd
+      TZ: Europe/Moscow
+    configs:
+      - source: postgres-scheme
+        target: /docker-entrypoint-initdb.d/01-postgres-scheme.sql
+    secrets:
+      - source: postgres-passwd
+        target: postgres-passwd
+  
+  client:
+    image: twobrowin/baumanec-bank:client-1.2.0
+    logging: *default-logging
+    networks:
+      - baumanec-bank
+    environment:
+      PG_CONN:     postgresql://client_app:${CLIENT_PSWD}@database:5432/postgres
+      APP_NAME:    client
+      I18N_LOCALE: ru-RU
+      TZ:          Europe/Moscow
+      UPD_TIME:    15
+  
+  bank:
+    image: twobrowin/baumanec-bank:bank-1.2.0-tr
+    logging: *default-logging
+    networks:
+      - baumanec-bank
+    environment:
+      PG_CONN:     postgresql://bank_app:${BANK_PSWD}@database:5432/postgres
+      APP_NAME:    bank
+      I18N_LOCALE: ru-RU
+      TZ:          Europe/Moscow
+  
+  market:
+    image: twobrowin/baumanec-bank:market-1.2.0-tr
+    logging: *default-logging
+    networks:
+      - baumanec-bank
+    environment:
+      PG_CONN:     postgresql://market_app:${MARKET_PSWD}@database:5432/postgres
+      APP_NAME:    market
+      I18N_LOCALE: ru-RU
+      TZ:          Europe/Moscow
+  
+  account:
+    image: twobrowin/baumanec-bank:account-1.2.0-kb
+    logging: *default-logging
+    networks:
+      - baumanec-bank
+    environment:
+      PG_CONN:     postgresql://account_app:${ACCOUNT_PSWD}@database:5432/postgres
+      APP_NAME:    account
+      I18N_LOCALE: ru-RU
+      TZ:          Europe/Moscow
+      UPD_TIME:    15
+  
+  government:
+    image: twobrowin/baumanec-bank:government-1.2.0-tr
+    logging: *default-logging
+    networks:
+      - baumanec-bank
+    environment:
+      PG_CONN:     postgresql://government_app:${GOVERNMENT_PSWD}@database:5432/postgres
+      APP_NAME:    government
+      I18N_LOCALE: ru-RU
+      TZ:          Europe/Moscow
+
+networks:
+  baumanec-bank:
+
+volumes:
+  postgres-data:
+
+configs:
+  postgres-scheme:
+    name: postgres-scheme-${PG_SCH_CHECKSUM}
+    file: postgres-scheme.sql
+
+secrets:
+  postgres-passwd:
+    name: postgres-passwd--${PG_PSWD_CHECKSUM}
+    file: postgres-passwd.secret

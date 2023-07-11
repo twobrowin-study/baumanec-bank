@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "baumanecbank_common"
+version = "1.2.0"
+authors = [
+  { name="Egor Dubrovin", email="dubrovin.en@ya.ru" },
+]
+description = "Common funcions package for Baumanec Bank bots"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  'python-telegram-bot==20.4',
+  'psycopg2-binary',
+  'python-dotenv',
+  'pyzbar',
+  'Pillow',
+  'pyyaml',
+  'tenacity'
+]
+
+[project.urls]
+"Homepage" = "https://github.com/twobrowin-study/baumanec-bank"
+"Bug Tracker" = "https://github.com/twobrowin-study/baumanec-bank/issues"
