@@ -1,12 +1,15 @@
 import os, asyncio
 
 from baumanecbank_common import ApplicationBb, Log
+from baumanecbank_common.postgres import SALARY, SERVICE
 
 from telegram import Bot
 from telegram.constants import ParseMode
 
 UPD_TIME = 'UPD_TIME'
 UPD_TIME_VAL = int(os.environ.get(UPD_TIME, '15'))
+
+INCOME = 'income'
 
 async def update_task(app: ApplicationBb) -> None:
     await asyncio.sleep(UPD_TIME_VAL)
@@ -18,6 +21,10 @@ async def update_task(app: ApplicationBb) -> None:
     for update in updates:
         if update.client_chat_id is None:
             continue
+        if update.type == SALARY:
+            continue
+        if update.type == SERVICE and update.operation == INCOME:
+            continue
         name = update.counter_firm_name if update.counter_firm_name is not None else update.counter_client_name
         message = app.i18n.app['updates'][update.type][update.operation].format(
             update = update,
@@ -27,10 +34,6 @@ async def update_task(app: ApplicationBb) -> None:
             name = name
         )
         try:
-            await bot.send_message(
-                update.client_chat_id, message,
-                reply_markup = app.keyboard_main,
-                parse_mode = ParseMode.MARKDOWN
-            )
+            await bot.send_message(update.client_chat_id, message, parse_mode = ParseMode.MARKDOWN)
         except Exception:
             Log.info(f"Got an exception while sending message to user {update.client_chat_id=}")

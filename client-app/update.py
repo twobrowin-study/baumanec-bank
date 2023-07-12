@@ -25,10 +25,6 @@ async def update_task(app: ApplicationBb) -> None:
             ),
         )
         try:
-            await bot.send_message(
-                update.client_chat_id, message,
-                reply_markup = app.reply_keyboard,
-                parse_mode = ParseMode.MARKDOWN
-            )
+            await bot.send_message(update.client_chat_id, message, parse_mode = ParseMode.MARKDOWN)
         except Exception:
             Log.info(f"Got an exception while sending message to user {update.client_chat_id=}")
