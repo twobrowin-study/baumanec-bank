@@ -206,6 +206,19 @@ class PgCon(PgConAbstract):
             if cursor.rowcount == 0:
                 return None
             return cursor.fetchone()
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential())
+    @reconnect
+    def check_if_client_is_master_by_chat_id(self, chat_id: str|int) -> bool:
+        with self._connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor) as cursor:
+            cursor.execute((
+                "SELECT is_master "
+                "FROM active_clients_card_codes_balances "
+                f"WHERE chat_id = '{chat_id}'"
+            ))
+            if cursor.rowcount == 0:
+                return False
+            return cursor.fetchone()[0]
     
     @retry(stop=stop_after_attempt(3), wait=wait_exponential())
     @reconnect

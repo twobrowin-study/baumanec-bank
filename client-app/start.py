@@ -46,7 +46,7 @@ async def restart_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     client = app.pgcon.get_client_by_chat_id(update.effective_user.id)
     await update.message.reply_markdown(
         app.i18n.app['start']['restart'].format(client=client),
-        reply_markup=app.reply_keyboard
+        reply_markup=app.get_keyboard_by_condition(client.is_master)
     )
     
 async def setup_client(uuid: str, reply_message_tag: str, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -75,6 +75,6 @@ async def setup_client(uuid: str, reply_message_tag: str, update: Update, contex
 
     await update.message.reply_markdown(
         app.i18n.app['start'][reply_message_tag].format(client=client),
-        reply_markup=app.reply_keyboard
+        reply_markup=app.get_keyboard_by_condition(client.is_master)
     )
     return ConversationHandler.END

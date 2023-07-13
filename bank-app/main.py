@@ -171,8 +171,7 @@ if __name__ == "__main__":
     repay_button_hitted      = button_hitted(REPAY_KEY,      MAIN_KEYBOARD)
 
     close_button_hitted         = button_hitted(CLOSE_KEY,         CLOSE_KEYBOARD)
-    change_amount_button_hitted = button_hitted(CHANGE_AMOUNT_KEY, CHANGE_KEYBOARD
-                                             )
+    change_amount_button_hitted = button_hitted(CHANGE_AMOUNT_KEY, CHANGE_KEYBOARD)
     cancel_button_hitted     = \
         button_hitted(CANCEL_KEY, CANCEL_KEYBOARD) | \
         button_hitted(CANCEL_KEY, CHANGE_KEYBOARD) | \

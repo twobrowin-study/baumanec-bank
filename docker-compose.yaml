@@ -28,7 +28,7 @@ services:
         target: postgres-passwd
   
   client:
-    image: twobrowin/baumanec-bank:client-1.2.0-lb
+    image: twobrowin/baumanec-bank:client-1.2.1-ch
     logging: *default-logging
     networks:
       - baumanec-bank

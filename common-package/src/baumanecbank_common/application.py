@@ -24,6 +24,21 @@ class ApplicationBb(Application):
         self.reply_keyboard_keys = []
         self.reply_keyboard      = ReplyKeyboardRemove()
     
+    def get_keyboard_by_condition(self, condition: bool, condition_name: str = 'conditional_buttons', from_config: str = 'keyboard') -> ReplyKeyboardMarkup|ReplyKeyboardRemove:
+        if from_config not in self.i18n.app:
+            return ReplyKeyboardRemove()
+        
+        show_all_buttons = condition_name not in self.i18n.app or condition == True
+        keyboard_keys = [
+            val for fun,val in self.i18n.app[from_config].items()
+            if show_all_buttons or fun not in self.i18n.app[condition_name]
+        ] if from_config in self.i18n.app else []
+
+        return ReplyKeyboardMarkup([
+            keyboard_keys[idx:idx+2]
+            for idx in range(0,len(keyboard_keys),2)
+        ])
+    
     def init_keyboard(self, from_config: str = 'keyboard', attr_name: str = 'reply_keyboard') -> None:
         keyboard_keys = [
             val for _,val in self.i18n.app[from_config].items()

@@ -1,2 +1,2 @@
-baumanecbank-common==1.2.0
+baumanecbank-common==1.2.1
 python-dotenv
