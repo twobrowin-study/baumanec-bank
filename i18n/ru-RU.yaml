@@ -83,52 +83,6 @@ ru-RU:
     close_keyboard:
       cancel: ❌ Отменить операцию
       close:  ✅ Подтвердить операцию
-
-    # my_commands:
-    #   - help: Получить помощь
-    #   - create_client: Зарегистрировать нового клиента
-    #   - create_firm: Зарегистрировать новую компанию
-    #   - gov_transaction: Транзакция от государства
-    #   - cancel: Отменить все текущие операции
-
-    # help: |
-    #   Я - бот помощник *по осуществлению государственных функций* БауБанка
-
-    #   *Регистрация клиента*
-    #   /create\_client - Зарегистрировать нового клиента, доступно:
-    #     - интерактивный режим - я проведу Вас через регистрацию
-    #     - формат одной команды:
-      
-    #   `/create_client <Номер карты>
-    #   <Фамилия Имя>
-    #   <Номер отряда 0-15>`
-
-    #   _Можно не указывать номер карты, прикрепить к тому же сообщению фотографию qr кода_
-
-    #   *Регистрация ИП*
-    #   /create\_firm - Зарегистрировать новую фирму, доступно:
-    #     - интерактивный режим - я проведу Вас через регистрацию
-    #     - формат одной команды:
-      
-    #   `/create_client <Название>`
-
-    #   По-умолчанию, создаётся фирма ИП, для указания фирмы как государственной обратитесь к администратору
-
-    #   *Добавление клиентов в фирму*
-
-    #   *Осуществление государственной транзакции*
-    
-    # create_client:
-    #   error: Ошбка при создании клиента, обратитесь к администратору
-    #   invalid_format: Ошбка в формате команды создания клиента, см. /help
-    #   invalid_squad_num: Некорректный номер отряда - допускаются значения 0..15
-    #   unavaliable_card_code: Номер карты `{uuid}` уже занят другим клиентом БауБанка!
-    #   card_code_not_found: Номер карты не найден в системе
-    #   success: |
-    #     Успешно зарегистрирован новый клиент БауБанка!
-    #     Номер карты:  `{uuid}`
-    #     Фамилия Имя:  *{name}*
-    #     Номер отряда: *{squad}*
   
   client:
     start:
@@ -210,6 +164,7 @@ ru-RU:
       repay:    "{operation_timestamp} Выплата по кредиту _{operation.firm_name}_: *{operation.amount}* Бублей"
       service:  "{operation_timestamp} Оплата услуг _{operation.firm_name}_: *{operation.amount}* Бублей, включён НДС {operation.govtax} Бублей"
       manual:   "{operation_timestamp} Получение государственной транзакции: *{operation.amount}* Бублей"
+      labor:    "{operation_timestamp} Зачисление зарплаты за работу на бирже труда _{operation.firm_name}_: *{operation.amount}* Бублей"
 
       row_separator: "\n\n"
 
@@ -253,6 +208,11 @@ ru-RU:
       
       manual: |
         {timestamp} Получение государственной транзакции: *{update.amount}* Бублей
+
+        Баланс: *{update.balance}* Бублей
+      
+      labor: |
+        {timestamp} Зачиление зарплаты за работу на бирже труда _{update.firm_name}_: *{update.amount}* Бублей
 
         Баланс: *{update.balance}* Бублей
     
@@ -463,6 +423,9 @@ ru-RU:
       manual:
         income:  "{operation_timestamp} Получение государственной транзакции: *{operation.amount}* Бублей"
         outcome: "{operation_timestamp} Выплата государственной транзакции: *{operation.amount}* Бублей"
+      labor:
+        income:  "{operation_timestamp} Получение зарплаты за работу на бирже труда _{name}_: *{operation.amount}* Бублей, НДФЛ составил {operation.govtax} Бублей"
+        outcome: "{operation_timestamp} Выплата зарплаты за работу на бирже труда _{name}_: *{operation.amount}* Бублей, включён НДФЛ {operation.govtax} Бублей"
 
       row_separator: "\n\n"
 
@@ -631,6 +594,8 @@ ru-RU:
       manual:
         income:  "{operation_timestamp} Получение государственной транзакции: *{operation.amount}* Бублей"
         outcome: "{operation_timestamp} Выплата государственной транзакции _{name}_: *{operation.amount}* Бублей"
+      labor:
+        outcome: "{operation_timestamp} Выплата зарплаты за работу на бирже труда _{name}_: *{operation.amount}* Бублей, включён НДФЛ {operation.govtax} Бублей"
 
       row_separator: "\n\n"
 
@@ -798,6 +763,11 @@ ru-RU:
           Баланс: *{update.balance}* Бублей
         outcome: |
           {timestamp} Выплата государственной транзакции _{name}_: *{update.amount}* Бублей
+
+          Баланс: *{update.balance}* Бублей
+      labor:
+        outcome: |
+          {timestamp} Выплата зарплаты за работу на бирже труда _{name}_: *{update.amount}* Бублей
 
           Баланс: *{update.balance}* Бублей
 

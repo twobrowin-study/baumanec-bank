@@ -28,7 +28,7 @@ services:
         target: postgres-passwd
   
   client:
-    image: twobrowin/baumanec-bank:client-1.2.0-kb.01
+    image: twobrowin/baumanec-bank:client-1.2.0-lb
     logging: *default-logging
     networks:
       - baumanec-bank
@@ -40,7 +40,7 @@ services:
       UPD_TIME:    15
   
   bank:
-    image: twobrowin/baumanec-bank:bank-1.2.0-tr
+    image: twobrowin/baumanec-bank:bank-1.2.0-lb
     logging: *default-logging
     networks:
       - baumanec-bank
@@ -62,7 +62,7 @@ services:
       TZ:          Europe/Moscow
   
   account:
-    image: twobrowin/baumanec-bank:account-1.2.0-kb.01
+    image: twobrowin/baumanec-bank:account-1.2.0-lb
     logging: *default-logging
     networks:
       - baumanec-bank
