@@ -80,7 +80,8 @@ CREATE TYPE public.transaction_type AS ENUM (
     'loan',
     'repay',
     'service',
-    'manual'
+    'manual',
+    'labor'
 );
 
 
@@ -224,6 +225,24 @@ $$;
 
 
 ALTER FUNCTION public.get_balance(card_code_id_inp bigint) OWNER TO postgres;
+
+--
+-- Name: labor_transaction_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.labor_transaction_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+	BEGIN
+	    IF NEW."type" = 'labor' then
+	     	NEW.source_card_code_id = bank_card_code_id();
+	    END IF;
+	    RETURN NEW;
+	END;
+$$;
+
+
+ALTER FUNCTION public.labor_transaction_trigger() OWNER TO postgres;
 
 --
 -- Name: loan_transaction_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -381,7 +400,8 @@ CREATE TABLE public.clients (
     squad public.squad_type NOT NULL,
     chat_id character varying,
     username character varying,
-    is_active boolean DEFAULT true NOT NULL
+    is_active boolean DEFAULT true NOT NULL,
+    is_master boolean DEFAULT false NOT NULL
 );
 
 
@@ -398,7 +418,8 @@ CREATE VIEW public.active_clients_card_codes AS
     c.name,
     c.squad,
     c.chat_id,
-    c.username
+    c.username,
+    c.is_master
    FROM public.clients c,
     public.card_codes cc
   WHERE ((cc.id = c.card_code_id) AND c.is_active);
@@ -511,7 +532,8 @@ CREATE TABLE public.transactions (
     source_card_code_id bigint NOT NULL,
     recipient_card_code_id bigint NOT NULL,
     amount numeric NOT NULL,
-    type public.transaction_type NOT NULL
+    type public.transaction_type NOT NULL,
+    is_active boolean DEFAULT true NOT NULL
 );
 
 
@@ -549,10 +571,76 @@ CREATE VIEW public.deposits AS
    FROM public.transactions t,
     public.active_clients_card_codes accc,
     public.bank b
-  WHERE ((t.type = 'deposit'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (b.card_code_id = t.recipient_card_code_id));
+  WHERE ((t.type = 'deposit'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (b.card_code_id = t.recipient_card_code_id) AND t.is_active)
+UNION
+ SELECT t.id,
+    t."timestamp",
+    t.type,
+    t.source_card_code_id,
+    b.uuid AS source_uuid,
+    b.id AS source_firm_id,
+    b.name AS source_firm_name,
+    NULL::bigint AS source_client_id,
+    NULL::text AS source_client_name,
+    NULL::public.squad_type AS source_client_squad,
+    NULL::text AS source_client_chat_id,
+    NULL::text AS source_client_username,
+    t.recipient_card_code_id,
+    afcc.uuid AS recipient_uuid,
+    afcc.id AS recipient_firm_id,
+    afcc.name AS recipient_firm_name,
+    NULL::bigint AS recipient_client_id,
+    NULL::text AS recipient_client_name,
+    NULL::public.squad_type AS recipient_client_squad,
+    NULL::text AS recipient_client_chat_id,
+    NULL::text AS recipient_client_username,
+    t.amount,
+    t.amount AS income,
+    0.0 AS govtax
+   FROM public.transactions t,
+    public.bank b,
+    public.active_firms_card_codes afcc
+  WHERE ((t.type = 'deposit'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (afcc.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.deposits OWNER TO postgres;
+
+--
+-- Name: labor; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.labor AS
+ SELECT t.id,
+    t."timestamp",
+    t.type,
+    t.source_card_code_id,
+    b.uuid AS source_uuid,
+    b.id AS source_firm_id,
+    b.name AS source_firm_name,
+    NULL::bigint AS source_client_id,
+    NULL::text AS source_client_name,
+    NULL::public.squad_type AS source_client_squad,
+    NULL::text AS source_client_chat_id,
+    NULL::text AS source_client_username,
+    t.recipient_card_code_id,
+    accc.uuid AS recipient_uuid,
+    NULL::bigint AS recipient_firm_id,
+    NULL::text AS recipient_firm_name,
+    accc.id AS recipient_client_id,
+    accc.name AS recipient_client_name,
+    accc.squad AS recipient_client_squad,
+    accc.chat_id AS recipient_client_chat_id,
+    accc.username AS recipient_client_username,
+    t.amount,
+    (t.amount * 0.87) AS income,
+    (t.amount * 0.13) AS govtax
+   FROM public.transactions t,
+    public.bank b,
+    public.active_clients_card_codes accc
+  WHERE ((t.type = 'labor'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id) AND t.is_active);
+
+
+ALTER TABLE public.labor OWNER TO postgres;
 
 --
 -- Name: loans; Type: VIEW; Schema: public; Owner: postgres
@@ -586,7 +674,36 @@ CREATE VIEW public.loans AS
    FROM public.transactions t,
     public.bank b,
     public.active_clients_card_codes accc
-  WHERE ((t.type = 'loan'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id));
+  WHERE ((t.type = 'loan'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id) AND t.is_active)
+UNION
+ SELECT t.id,
+    t."timestamp",
+    t.type,
+    t.source_card_code_id,
+    b.uuid AS source_uuid,
+    b.id AS source_firm_id,
+    b.name AS source_firm_name,
+    NULL::bigint AS source_client_id,
+    NULL::text AS source_client_name,
+    NULL::public.squad_type AS source_client_squad,
+    NULL::text AS source_client_chat_id,
+    NULL::text AS source_client_username,
+    t.recipient_card_code_id,
+    afcc.uuid AS recipient_uuid,
+    afcc.id AS recipient_firm_id,
+    afcc.name AS recipient_firm_name,
+    NULL::bigint AS recipient_client_id,
+    NULL::text AS recipient_client_name,
+    NULL::public.squad_type AS recipient_client_squad,
+    NULL::text AS recipient_client_chat_id,
+    NULL::text AS recipient_client_username,
+    t.amount,
+    t.amount AS income,
+    0.0 AS govtax
+   FROM public.transactions t,
+    public.bank b,
+    public.active_firms_card_codes afcc
+  WHERE ((t.type = 'loan'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (afcc.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.loans OWNER TO postgres;
@@ -623,7 +740,7 @@ CREATE VIEW public.manual_clients AS
    FROM public.transactions t,
     public.bank b,
     public.active_clients_card_codes accc
-  WHERE ((t.type = 'manual'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id));
+  WHERE ((t.type = 'manual'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.manual_clients OWNER TO postgres;
@@ -660,7 +777,7 @@ CREATE VIEW public.manual_firms AS
    FROM public.transactions t,
     public.bank b,
     public.active_firms_card_codes afcc
-  WHERE ((t.type = 'manual'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (afcc.card_code_id = t.recipient_card_code_id));
+  WHERE ((t.type = 'manual'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (afcc.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.manual_firms OWNER TO postgres;
@@ -713,7 +830,7 @@ CREATE VIEW public.purchases AS
    FROM public.transactions t,
     public.active_clients_card_codes accc,
     public.market m
-  WHERE ((t.type = 'purchase'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (m.card_code_id = t.recipient_card_code_id))
+  WHERE ((t.type = 'purchase'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (m.card_code_id = t.recipient_card_code_id) AND t.is_active)
 UNION
  SELECT t.id,
     t."timestamp",
@@ -742,7 +859,7 @@ UNION
    FROM public.transactions t,
     public.active_firms_card_codes afcc,
     public.market m
-  WHERE ((t.type = 'purchase'::public.transaction_type) AND (afcc.card_code_id = t.source_card_code_id) AND (m.card_code_id = t.recipient_card_code_id));
+  WHERE ((t.type = 'purchase'::public.transaction_type) AND (afcc.card_code_id = t.source_card_code_id) AND (m.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.purchases OWNER TO postgres;
@@ -779,7 +896,36 @@ CREATE VIEW public.repays AS
    FROM public.transactions t,
     public.active_clients_card_codes accc,
     public.bank b
-  WHERE ((t.type = 'repay'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (b.card_code_id = t.recipient_card_code_id));
+  WHERE ((t.type = 'repay'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (b.card_code_id = t.recipient_card_code_id) AND t.is_active)
+UNION
+ SELECT t.id,
+    t."timestamp",
+    t.type,
+    t.source_card_code_id,
+    b.uuid AS source_uuid,
+    b.id AS source_firm_id,
+    b.name AS source_firm_name,
+    NULL::bigint AS source_client_id,
+    NULL::text AS source_client_name,
+    NULL::public.squad_type AS source_client_squad,
+    NULL::text AS source_client_chat_id,
+    NULL::text AS source_client_username,
+    t.recipient_card_code_id,
+    afcc.uuid AS recipient_uuid,
+    afcc.id AS recipient_firm_id,
+    afcc.name AS recipient_firm_name,
+    NULL::bigint AS recipient_client_id,
+    NULL::text AS recipient_client_name,
+    NULL::public.squad_type AS recipient_client_squad,
+    NULL::text AS recipient_client_chat_id,
+    NULL::text AS recipient_client_username,
+    t.amount,
+    (t.amount * 0.80) AS income,
+    (t.amount * 0.20) AS govtax
+   FROM public.transactions t,
+    public.bank b,
+    public.active_firms_card_codes afcc
+  WHERE ((t.type = 'repay'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (afcc.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.repays OWNER TO postgres;
@@ -793,29 +939,30 @@ CREATE VIEW public.salaries AS
     t."timestamp",
     t.type,
     t.source_card_code_id,
-    aefu.firm_uuid AS source_uuid,
-    aefu.firm_id AS source_firm_id,
-    aefu.firm_name AS source_firm_name,
+    afcc.uuid AS source_uuid,
+    afcc.id AS source_firm_id,
+    afcc.name AS source_firm_name,
     NULL::bigint AS source_client_id,
     NULL::text AS source_client_name,
     NULL::public.squad_type AS source_client_squad,
     NULL::text AS source_client_chat_id,
     NULL::text AS source_client_username,
     t.recipient_card_code_id,
-    aefu.client_uuid AS recipient_uuid,
+    accc.uuid AS recipient_uuid,
     NULL::bigint AS recipient_firm_id,
     NULL::text AS recipient_firm_name,
-    aefu.client_id AS recipient_client_id,
-    aefu.client_name AS recipient_client_name,
-    aefu.client_squad AS recipient_client_squad,
-    aefu.client_chat_id AS recipient_client_chat_id,
-    aefu.client_username AS recipient_client_username,
+    accc.id AS recipient_client_id,
+    accc.name AS recipient_client_name,
+    accc.squad AS recipient_client_squad,
+    accc.chat_id AS recipient_client_chat_id,
+    accc.username AS recipient_client_username,
     t.amount,
     (t.amount * 0.87) AS income,
     (t.amount * 0.13) AS govtax
    FROM public.transactions t,
-    public.active_employees aefu
-  WHERE ((t.type = 'salary'::public.transaction_type) AND (aefu.firm_card_code_id = t.source_card_code_id) AND (aefu.client_card_code_id = t.recipient_card_code_id));
+    public.active_clients_card_codes accc,
+    public.active_firms_card_codes afcc
+  WHERE ((t.type = 'salary'::public.transaction_type) AND (afcc.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.salaries OWNER TO postgres;
@@ -825,87 +972,63 @@ ALTER TABLE public.salaries OWNER TO postgres;
 --
 
 CREATE VIEW public.services AS
- SELECT srv.id,
-    srv."timestamp",
-    srv.type,
-    srv.source_card_code_id,
-    srv.source_uuid,
-    srv.source_firm_id,
-    srv.source_firm_name,
-    srv.source_client_id,
-    srv.source_client_name,
-    srv.source_client_squad,
-    srv.source_client_chat_id,
-    srv.source_client_username,
-    srv.recipient_card_code_id,
-    srv.recipient_uuid,
-    srv.recipient_firm_id,
-    srv.recipient_firm_name,
-    srv.recipient_client_id,
-    srv.recipient_client_name,
-    srv.recipient_client_squad,
-    srv.recipient_client_chat_id,
-    srv.recipient_client_username,
-    srv.amount,
-    srv.income,
-    srv.govtax
-   FROM ( SELECT t.id,
-            t."timestamp",
-            t.type,
-            t.source_card_code_id,
-            afcc_s.uuid AS source_uuid,
-            afcc_s.id AS source_firm_id,
-            afcc_s.name AS source_firm_name,
-            NULL::bigint AS source_client_id,
-            NULL::text AS source_client_name,
-            NULL::public.squad_type AS source_client_squad,
-            NULL::text AS source_client_chat_id,
-            NULL::text AS source_client_username,
-            t.recipient_card_code_id,
-            afcc_r.uuid AS recipient_uuid,
-            afcc_r.id AS recipient_firm_id,
-            afcc_r.name AS recipient_firm_name,
-            NULL::bigint AS recipient_client_id,
-            NULL::text AS recipient_client_name,
-            NULL::public.squad_type AS recipient_client_squad,
-            NULL::text AS recipient_client_chat_id,
-            NULL::text AS recipient_client_username,
-            t.amount,
-            (t.amount * 0.80) AS income,
-            (t.amount * 0.20) AS govtax
-           FROM public.transactions t,
-            public.active_firms_card_codes afcc_s,
-            public.active_firms_card_codes afcc_r
-          WHERE ((t.type = 'service'::public.transaction_type) AND (afcc_s.card_code_id = t.source_card_code_id) AND (afcc_r.card_code_id = t.recipient_card_code_id) AND (t.source_card_code_id <> t.recipient_card_code_id))
-        UNION
-         SELECT t.id,
-            t."timestamp",
-            t.type,
-            t.source_card_code_id,
-            accc.uuid AS source_uuid,
-            NULL::bigint AS source_firm_id,
-            NULL::text AS source_firm_name,
-            accc.id AS source_client_id,
-            accc.name AS source_client_name,
-            accc.squad AS source_client_squad,
-            accc.chat_id AS source_client_chat_id,
-            accc.username AS source_client_username,
-            t.recipient_card_code_id,
-            afcc_r.uuid AS recipient_uuid,
-            afcc_r.id AS recipient_firm_id,
-            afcc_r.name AS recipient_firm_name,
-            NULL::bigint AS recipient_client_id,
-            NULL::text AS recipient_client_name,
-            NULL::public.squad_type AS recipient_client_squad,
-            NULL::text AS recipient_client_chat_id,
-            NULL::text AS recipient_client_username,
-            t.amount,
-            (t.amount * 0.80) AS income,
-            (t.amount * 0.20) AS govtax
-           FROM public.transactions t,
-            public.active_clients_card_codes accc,
-            public.active_firms_card_codes afcc_r
-          WHERE ((t.type = 'service'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (afcc_r.card_code_id = t.recipient_card_code_id) AND (t.source_card_code_id <> t.recipient_card_code_id))) srv;
+ SELECT t.id,
+    t."timestamp",
+    t.type,
+    t.source_card_code_id,
+    afcc_s.uuid AS source_uuid,
+    afcc_s.id AS source_firm_id,
+    afcc_s.name AS source_firm_name,
+    NULL::bigint AS source_client_id,
+    NULL::text AS source_client_name,
+    NULL::public.squad_type AS source_client_squad,
+    NULL::text AS source_client_chat_id,
+    NULL::text AS source_client_username,
+    t.recipient_card_code_id,
+    afcc_r.uuid AS recipient_uuid,
+    afcc_r.id AS recipient_firm_id,
+    afcc_r.name AS recipient_firm_name,
+    NULL::bigint AS recipient_client_id,
+    NULL::text AS recipient_client_name,
+    NULL::public.squad_type AS recipient_client_squad,
+    NULL::text AS recipient_client_chat_id,
+    NULL::text AS recipient_client_username,
+    t.amount,
+    (t.amount * 0.80) AS income,
+    (t.amount * 0.20) AS govtax
+   FROM public.transactions t,
+    public.active_firms_card_codes afcc_s,
+    public.active_firms_card_codes afcc_r
+  WHERE ((t.type = 'service'::public.transaction_type) AND (afcc_s.card_code_id = t.source_card_code_id) AND (afcc_r.card_code_id = t.recipient_card_code_id) AND (t.source_card_code_id <> t.recipient_card_code_id) AND t.is_active)
+UNION
+ SELECT t.id,
+    t."timestamp",
+    t.type,
+    t.source_card_code_id,
+    accc.uuid AS source_uuid,
+    NULL::bigint AS source_firm_id,
+    NULL::text AS source_firm_name,
+    accc.id AS source_client_id,
+    accc.name AS source_client_name,
+    accc.squad AS source_client_squad,
+    accc.chat_id AS source_client_chat_id,
+    accc.username AS source_client_username,
+    t.recipient_card_code_id,
+    afcc_r.uuid AS recipient_uuid,
+    afcc_r.id AS recipient_firm_id,
+    afcc_r.name AS recipient_firm_name,
+    NULL::bigint AS recipient_client_id,
+    NULL::text AS recipient_client_name,
+    NULL::public.squad_type AS recipient_client_squad,
+    NULL::text AS recipient_client_chat_id,
+    NULL::text AS recipient_client_username,
+    t.amount,
+    (t.amount * 0.80) AS income,
+    (t.amount * 0.20) AS govtax
+   FROM public.transactions t,
+    public.active_clients_card_codes accc,
+    public.active_firms_card_codes afcc_r
+  WHERE ((t.type = 'service'::public.transaction_type) AND (accc.card_code_id = t.source_card_code_id) AND (afcc_r.card_code_id = t.recipient_card_code_id) AND (t.source_card_code_id <> t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.services OWNER TO postgres;
@@ -942,7 +1065,36 @@ CREATE VIEW public.withdraws AS
    FROM public.transactions t,
     public.bank b,
     public.active_clients_card_codes accc
-  WHERE ((t.type = 'withdraw'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id));
+  WHERE ((t.type = 'withdraw'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (accc.card_code_id = t.recipient_card_code_id) AND t.is_active)
+UNION
+ SELECT t.id,
+    t."timestamp",
+    t.type,
+    t.source_card_code_id,
+    b.uuid AS source_uuid,
+    b.id AS source_firm_id,
+    b.name AS source_firm_name,
+    NULL::bigint AS source_client_id,
+    NULL::text AS source_client_name,
+    NULL::public.squad_type AS source_client_squad,
+    NULL::text AS source_client_chat_id,
+    NULL::text AS source_client_username,
+    t.recipient_card_code_id,
+    afcc.uuid AS recipient_uuid,
+    afcc.id AS recipient_firm_id,
+    afcc.name AS recipient_firm_name,
+    NULL::bigint AS recipient_client_id,
+    NULL::text AS recipient_client_name,
+    NULL::public.squad_type AS recipient_client_squad,
+    NULL::text AS recipient_client_chat_id,
+    NULL::text AS recipient_client_username,
+    t.amount,
+    (t.amount * 0.87) AS income,
+    (t.amount * 0.13) AS govtax
+   FROM public.transactions t,
+    public.bank b,
+    public.active_firms_card_codes afcc
+  WHERE ((t.type = 'withdraw'::public.transaction_type) AND (b.card_code_id = t.source_card_code_id) AND (afcc.card_code_id = t.recipient_card_code_id) AND t.is_active);
 
 
 ALTER TABLE public.withdraws OWNER TO postgres;
@@ -1208,7 +1360,33 @@ CREATE VIEW public.transactions_clients_firms_taxes AS
             manual_firms.amount,
             manual_firms.income,
             manual_firms.govtax
-           FROM public.manual_firms) tr
+           FROM public.manual_firms
+        UNION
+         SELECT labor.id,
+            labor."timestamp",
+            labor.type,
+            labor.source_card_code_id,
+            labor.source_uuid,
+            labor.source_firm_id,
+            labor.source_firm_name,
+            labor.source_client_id,
+            labor.source_client_name,
+            labor.source_client_squad,
+            labor.source_client_chat_id,
+            labor.source_client_username,
+            labor.recipient_card_code_id,
+            labor.recipient_uuid,
+            labor.recipient_firm_id,
+            labor.recipient_firm_name,
+            labor.recipient_client_id,
+            labor.recipient_client_name,
+            labor.recipient_client_squad,
+            labor.recipient_client_chat_id,
+            labor.recipient_client_username,
+            labor.amount,
+            labor.income,
+            labor.govtax
+           FROM public.labor) tr
   ORDER BY tr."timestamp";
 
 
@@ -1310,7 +1488,8 @@ CREATE VIEW public.active_clients_card_codes_balances AS
     accc.squad,
     accc.chat_id,
     accc.username,
-    b.balance
+    b.balance,
+    accc.is_master
    FROM public.balances b,
     public.active_clients_card_codes accc
   WHERE (b.card_code_id = accc.card_code_id);
@@ -2263,6 +2442,13 @@ CREATE TRIGGER insert_trigger BEFORE INSERT ON public.transactions FOR EACH ROW 
 
 
 --
+-- Name: transactions labor_trigger; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER labor_trigger BEFORE INSERT ON public.transactions FOR EACH ROW EXECUTE FUNCTION public.labor_transaction_trigger();
+
+
+--
 -- Name: transactions loan_trigger; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -2407,6 +2593,7 @@ GRANT INSERT ON TABLE public.transactions TO market_app;
 GRANT INSERT ON TABLE public.transactions TO account_app;
 GRANT INSERT ON TABLE public.transactions TO government_app;
 GRANT INSERT ON TABLE public.transactions TO bank_app;
+GRANT INSERT ON TABLE public.transactions TO client_app;
 
 
 --
@@ -2425,6 +2612,7 @@ GRANT SELECT ON TABLE public.balances TO market_app;
 GRANT SELECT ON TABLE public.balances TO account_app;
 GRANT SELECT ON TABLE public.balances TO government_app;
 GRANT SELECT ON TABLE public.balances TO bank_app;
+GRANT SELECT ON TABLE public.balances TO client_app;
 
 
 --
@@ -2449,6 +2637,7 @@ GRANT SELECT ON TABLE public.active_clients_card_codes_balances TO account_app;
 --
 
 GRANT SELECT ON TABLE public.active_firms_card_codes_balances TO bank_app;
+GRANT SELECT ON TABLE public.active_firms_card_codes_balances TO client_app;
 
 
 --
@@ -2507,6 +2696,7 @@ GRANT SELECT ON TABLE public.client_opreations_balance TO market_app;
 GRANT SELECT ON TABLE public.client_opreations_balance TO account_app;
 GRANT SELECT ON TABLE public.client_opreations_balance TO government_app;
 GRANT SELECT ON TABLE public.client_opreations_balance TO bank_app;
+GRANT SELECT ON TABLE public.client_opreations_balance TO client_app;
 
 
 --
@@ -2553,6 +2743,7 @@ GRANT SELECT ON TABLE public.firm_operations_balance_account TO market_app;
 GRANT SELECT ON TABLE public.firm_operations_balance_account TO account_app;
 GRANT SELECT ON TABLE public.firm_operations_balance_account TO government_app;
 GRANT SELECT ON TABLE public.firm_operations_balance_account TO bank_app;
+GRANT SELECT ON TABLE public.firm_operations_balance_account TO client_app;
 
 
 --
@@ -2584,7 +2775,7 @@ GRANT INSERT ON TABLE public.queue_client_app TO market_app;
 GRANT INSERT ON TABLE public.queue_client_app TO account_app;
 GRANT INSERT ON TABLE public.queue_client_app TO government_app;
 GRANT INSERT ON TABLE public.queue_client_app TO bank_app;
-GRANT SELECT,UPDATE ON TABLE public.queue_client_app TO client_app;
+GRANT SELECT,INSERT,UPDATE ON TABLE public.queue_client_app TO client_app;
 
 
 --
@@ -2595,6 +2786,7 @@ GRANT USAGE ON SEQUENCE public.queue_client_app_id_seq TO market_app;
 GRANT USAGE ON SEQUENCE public.queue_client_app_id_seq TO account_app;
 GRANT USAGE ON SEQUENCE public.queue_client_app_id_seq TO government_app;
 GRANT USAGE ON SEQUENCE public.queue_client_app_id_seq TO bank_app;
+GRANT USAGE ON SEQUENCE public.queue_client_app_id_seq TO client_app;
 
 
 --
@@ -2605,6 +2797,7 @@ GRANT INSERT ON TABLE public.queue_firm_app TO market_app;
 GRANT SELECT,INSERT,UPDATE ON TABLE public.queue_firm_app TO account_app;
 GRANT INSERT ON TABLE public.queue_firm_app TO government_app;
 GRANT INSERT ON TABLE public.queue_firm_app TO bank_app;
+GRANT INSERT ON TABLE public.queue_firm_app TO client_app;
 
 
 --
@@ -2615,6 +2808,7 @@ GRANT USAGE ON SEQUENCE public.queue_firm_app_id_seq TO account_app;
 GRANT USAGE ON SEQUENCE public.queue_firm_app_id_seq TO government_app;
 GRANT USAGE ON SEQUENCE public.queue_firm_app_id_seq TO bank_app;
 GRANT USAGE ON SEQUENCE public.queue_firm_app_id_seq TO market_app;
+GRANT USAGE ON SEQUENCE public.queue_firm_app_id_seq TO client_app;
 
 
 --
@@ -2636,6 +2830,7 @@ GRANT USAGE ON SEQUENCE public.transactions_id_seq TO market_app;
 GRANT USAGE ON SEQUENCE public.transactions_id_seq TO account_app;
 GRANT USAGE ON SEQUENCE public.transactions_id_seq TO government_app;
 GRANT USAGE ON SEQUENCE public.transactions_id_seq TO bank_app;
+GRANT USAGE ON SEQUENCE public.transactions_id_seq TO client_app;
 
 
 --
