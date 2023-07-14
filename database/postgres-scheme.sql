@@ -891,8 +891,8 @@ CREATE VIEW public.repays AS
     NULL::text AS recipient_client_chat_id,
     NULL::text AS recipient_client_username,
     t.amount,
-    (t.amount * 0.80) AS income,
-    (t.amount * 0.20) AS govtax
+    t.amount AS income,
+    0.0 AS govtax
    FROM public.transactions t,
     public.active_clients_card_codes accc,
     public.bank b
@@ -920,8 +920,8 @@ UNION
     NULL::text AS recipient_client_chat_id,
     NULL::text AS recipient_client_username,
     t.amount,
-    (t.amount * 0.80) AS income,
-    (t.amount * 0.20) AS govtax
+    t.amount AS income,
+    0.0 AS govtax
    FROM public.transactions t,
     public.bank b,
     public.active_firms_card_codes afcc
@@ -994,8 +994,8 @@ CREATE VIEW public.services AS
     NULL::text AS recipient_client_chat_id,
     NULL::text AS recipient_client_username,
     t.amount,
-    (t.amount * 0.80) AS income,
-    (t.amount * 0.20) AS govtax
+    t.amount AS income,
+    0.0 AS govtax
    FROM public.transactions t,
     public.active_firms_card_codes afcc_s,
     public.active_firms_card_codes afcc_r
@@ -1023,8 +1023,8 @@ UNION
     NULL::text AS recipient_client_chat_id,
     NULL::text AS recipient_client_username,
     t.amount,
-    (t.amount * 0.80) AS income,
-    (t.amount * 0.20) AS govtax
+    t.amount AS income,
+    0.0 AS govtax
    FROM public.transactions t,
     public.active_clients_card_codes accc,
     public.active_firms_card_codes afcc_r
@@ -1060,8 +1060,8 @@ CREATE VIEW public.withdraws AS
     accc.chat_id AS recipient_client_chat_id,
     accc.username AS recipient_client_username,
     t.amount,
-    (t.amount * 0.87) AS income,
-    (t.amount * 0.13) AS govtax
+    t.amount AS income,
+    0.0 AS govtax
    FROM public.transactions t,
     public.bank b,
     public.active_clients_card_codes accc
@@ -1089,8 +1089,8 @@ UNION
     NULL::text AS recipient_client_chat_id,
     NULL::text AS recipient_client_username,
     t.amount,
-    (t.amount * 0.87) AS income,
-    (t.amount * 0.13) AS govtax
+    t.amount AS income,
+    0.0 AS govtax
    FROM public.transactions t,
     public.bank b,
     public.active_firms_card_codes afcc
