@@ -48,7 +48,7 @@ async def loan_uuid_input_handler(update: Update, context: ContextTypes.DEFAULT_
     context.user_data["uuid"] = uuid
     amount = context.user_data["amount"]
     await update.message.reply_markdown(
-        app.i18n.app['loan']['confirmation'].format(amount=amount, uuid=uuid, govtax=amount*0.2),
+        app.i18n.app['loan']['confirmation'].format(amount=amount, uuid=uuid),
         reply_markup=app.close_keyboard
     )
     return LOAN_CLOSE_AWAIT
@@ -86,7 +86,7 @@ async def loan_qr_input_handler(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data["uuid"] = uuid
     amount = context.user_data["amount"]
     await update.message.reply_markdown(
-        app.i18n.app['loan']['confirmation'].format(amount=amount, uuid=uuid, govtax=amount*0.2),
+        app.i18n.app['loan']['confirmation'].format(amount=amount, uuid=uuid),
         reply_markup=app.close_keyboard
     )
     return LOAN_CLOSE_AWAIT

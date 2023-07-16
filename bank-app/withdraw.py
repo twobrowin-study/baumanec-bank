@@ -48,7 +48,7 @@ async def withdraw_uuid_input_handler(update: Update, context: ContextTypes.DEFA
     context.user_data["uuid"] = uuid
     amount = context.user_data["amount"]
     await update.message.reply_markdown(
-        app.i18n.app['withdraw']['confirmation'].format(amount=amount, uuid=uuid, govtax=amount*0.2),
+        app.i18n.app['withdraw']['confirmation'].format(amount=amount, uuid=uuid),
         reply_markup=app.close_keyboard
     )
     return WITHDRAW_CLOSE_AWAIT
@@ -86,7 +86,7 @@ async def withdraw_qr_input_handler(update: Update, context: ContextTypes.DEFAUL
     context.user_data["uuid"] = uuid
     amount = context.user_data["amount"]
     await update.message.reply_markdown(
-        app.i18n.app['withdraw']['confirmation'].format(amount=amount, uuid=uuid, govtax=amount*0.2),
+        app.i18n.app['withdraw']['confirmation'].format(amount=amount, uuid=uuid),
         reply_markup=app.close_keyboard
     )
     return WITHDRAW_CLOSE_AWAIT

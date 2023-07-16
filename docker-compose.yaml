@@ -40,7 +40,7 @@ services:
       UPD_TIME:    15
   
   bank:
-    image: twobrowin/baumanec-bank:bank-1.2.0-lb
+    image: twobrowin/baumanec-bank:bank-1.2.1-tx
     logging: *default-logging
     networks:
       - baumanec-bank
