@@ -62,7 +62,7 @@ services:
       TZ:          Europe/Moscow
   
   account:
-    image: twobrowin/baumanec-bank:account-1.2.0-sl
+    image: twobrowin/baumanec-bank:account-1.2.0-cl
     logging: *default-logging
     networks:
       - baumanec-bank

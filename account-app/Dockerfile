@@ -1,4 +1,4 @@
-FROM twobrowin/baumanec-bank:common-1.2.0-sl
+FROM twobrowin/baumanec-bank:common-1.2.0-cl
 
 ENV APP_NAME 'account'
 
