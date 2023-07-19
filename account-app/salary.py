@@ -68,6 +68,13 @@ async def salary_close_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     client  = context.user_data["client"]
     account = app.pgcon.get_account_by_chat_id(update.message.chat_id)
 
+    if not account.is_government and account.balance < amount:
+        await update.message.reply_markdown(
+            app.i18n.app['salary']['balance_not_enough'],
+            reply_markup=app.keyboard_main
+        )
+        return ConversationHandler.END
+
     err = app.pgcon.create_salary(account.firm_card_code_id, client.card_code_id, amount)
     if err is not None:
         await update.message.reply_markdown(

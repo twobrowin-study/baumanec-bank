@@ -497,7 +497,8 @@ CREATE VIEW public.active_employees AS
     accc.squad AS client_squad,
     accc.chat_id AS client_chat_id,
     accc.username AS client_username,
-    e.is_account
+    e.is_account,
+    afcc.is_government
    FROM public.employees e,
     public.active_firms_card_codes afcc,
     public.active_clients_card_codes accc
@@ -1468,7 +1469,8 @@ CREATE VIEW public.active_accounts_card_codes_balances AS
     ae.client_squad,
     ae.client_chat_id,
     ae.client_username,
-    b.balance
+    b.balance,
+    ae.is_government
    FROM public.active_employees ae,
     public.balances b
   WHERE (ae.is_account AND (ae.firm_card_code_id = b.card_code_id));
